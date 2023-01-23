@@ -1,9 +1,19 @@
 import os, pandas
 import plotly.graph_objects as go
-from datetime import datetime
+from datetime import date
 
 
 symbols = ['AAPL']
+# create empty dataframe to add stocks to export as csv 
+csv_df = pandas.DataFrame(columns=['stock'])
+csv_out_df = pandas.DataFrame(columns=['stock'])
+csv_bb_df = pandas.DataFrame(columns=['stock'])
+today = date.today()
+
+# function to append stock to csv_df 
+def append_stock(symbol):
+    csv_df.append({'stock': symbol}, ignore_index=True)
+    return
 
 for filename in os.listdir('datasets'):
     #print(filename)
@@ -27,16 +37,34 @@ for filename in os.listdir('datasets'):
     def in_squeeze(df):
         return df['lower_band'] > df['lower_keltner'] and df['upper_band'] < df['upper_keltner']
 
+    def out_upper_bb(df):
+        return df['Close'] > df['upper_band']
+
+
     df['squeeze_on'] = df.apply(in_squeeze, axis=1)
+    # breaking out touched upper bollinger band 
+    df['upper_bb_breakout'] = df.apply(out_upper_bb, axis=1)
 
     # coming out of the squueeze
-    if df.iloc[-6]['squeeze_on'] and not df.iloc[-5]['squeeze_on']:
-         print("{} is coming out the squeeze on {}".format(symbol, df.iloc[-5]['Date']))
+    if df.iloc[-2]['squeeze_on'] and not df.iloc[-1]['squeeze_on']:
+         print("{} is coming out the squeeze on {}".format(symbol, df.iloc[-1]['Date']))
+         # append stocks here to csv df 
+         csv_out_df = csv_out_df.append({'stock': symbol}, ignore_index=True)
+
 
     # in the squeeze 
-    # if df.iloc[-1]['squeeze_on']:
-    #     print("{} is in the squeeze".format(symbol))
+    if df.iloc[-1]['squeeze_on']:
+        print("{} is in the squeeze".format(symbol))
+        # append stocks here to csv df 
+        csv_df = csv_df.append({'stock': symbol}, ignore_index=True)
 
+
+    # bollinger band breakout
+    if df.iloc[-1]['upper_bb_breakout'] and not df.iloc[-2]['upper_bb_breakout']:
+        print("{} is breaking out of the bolinger band".format(symbol, df.iloc[-1]['Date']))
+        csv_bb_df = csv_bb_df.append({'stock': symbol}, ignore_index=True)
+
+    
     # if symbol in symbols:
     #     print(df)
     #     aapl_df = df 
@@ -58,3 +86,7 @@ for filename in os.listdir('datasets'):
 # fig.layout.xaxis.rangeslider.visible = False
 
 # fig.show()
+
+csv_df.to_csv('squeeze-'  + str(today) + '.csv', index=False, header=False)
+csv_out_df.to_csv('out_squeeze-'  + str(today) + '.csv', index=False, header=False)
+csv_bb_df.to_csv('BB-'  + str(today) + '.csv', index=False, header=False)
